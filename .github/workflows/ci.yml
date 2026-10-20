@@ -32,7 +32,7 @@ jobs:
           python-version: '3.13'
           cache: pip
           cache-dependency-path: |
-            requirements.txt
+            requirements-local.txt
             requirements-dev.txt
       - name: Install JavaScript dependencies
         run: npm ci

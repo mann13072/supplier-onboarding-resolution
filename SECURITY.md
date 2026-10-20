@@ -2,9 +2,9 @@
 
 ## Intended use
 
-This repository is a local, single-user portfolio prototype with synthetic data. It is not a production service. No supported production release or security certification is claimed.
+This repository is a portfolio prototype with synthetic data, available as a hosted demonstration and a local application. It is not a production service. No supported production release or security certification is claimed.
 
-The server binds to `127.0.0.1`. Do not expose it to the Internet or a shared network without designing authentication, authorization, tenancy, privacy controls, operational monitoring, and deployment protection first.
+The local server binds to `127.0.0.1`. The public showcase uses Vercel and Cloudflare Workers with a separate SQLite-backed Durable Object for each anonymous browser identifier. The identifier is stored in localStorage and forwarded through the Vercel API proxy. This separates ordinary visitors' scenarios, but is not authentication or an authorization boundary for private data. Clearing browser storage starts another workspace. Never enter real customer, contact, or confidential records. A production deployment requires identity, authorization, privacy controls, and operational protections.
 
 ## What the controls do
 

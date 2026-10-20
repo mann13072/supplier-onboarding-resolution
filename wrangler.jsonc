@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "supplier-onboarding-api",
+  "main": ".wrangler/backend/worker.py",
+  "build": { "command": "python scripts/stage_worker.py" },
+  "compatibility_date": "2026-10-20",
+  "compatibility_flags": ["python_workers"],
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [{ "name": "DEMO_WORKSPACES", "class_name": "DemoWorkspace" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DemoWorkspace"] }]
+}

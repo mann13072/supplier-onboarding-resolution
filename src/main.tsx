@@ -43,10 +43,20 @@ function Badge({ children, tone='neutral' }: { children: React.ReactNode; tone?:
 function ContactCard({ label, contact, source, readOnly=false }: { label: string; contact: Contact; source: string; readOnly?: boolean }) { return <div className={`contact-card ${readOnly?'source-contact':'operational-contact'}`}><div className="micro">{label}{readOnly && <Icon name="lock" size={12}/>}</div><strong>{contact.name}</strong><span className="email">{contact.email}</span><small>{source}</small></div>; }
 const date = (value: string) => new Date(value).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric',timeZone:'Europe/Berlin'});
 const dateTime = (value: string) => new Date(value).toLocaleString('en-GB', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+const demoSession = (() => {
+  try {
+    const key = 'onboarding-demo-session';
+    const session = localStorage.getItem(key) || crypto.randomUUID();
+    localStorage.setItem(key, session);
+    return session;
+  } catch { return crypto.randomUUID(); }
+})();
 async function api<T>(path: string, body?: unknown): Promise<T> {
   let response: Response;
-  try { response = await fetch(path, body === undefined ? undefined : {method:'POST', headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }
-  catch { throw new Error('The local application is not responding. Check that the foreground server is running. Your unsaved input is still here.'); }
+  const headers: Record<string,string> = {'X-Demo-Session':demoSession};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  try { response = await fetch(path, {method:body === undefined?'GET':'POST', headers, body:body === undefined?undefined:JSON.stringify(body), cache:'no-store'}); }
+  catch { throw new Error('The demo service is temporarily unavailable. Please try again. Your unsaved input is still here.'); }
   const data = await response.json();
   if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : data.detail?.map((x: {msg:string})=>x.msg).join(' · ') || 'The request could not be saved.');
   return data as T;
@@ -85,7 +95,7 @@ function App() {
   useEffect(()=>{let active=true;if(!selected){setCurrent(null);return;}setCurrent(null);setRequestLoading(true);setTab('onboarding');api<SupplierCase>(`/api/cases/${selected}`).then(c=>{if(active)setCurrent(c);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setRequestLoading(false);});return()=>{active=false;};},[selected]);
   useEffect(()=>{if(!selected&&!loading)window.scrollTo(0,listScroll);},[selected,loading]);
   function navigate(id: string|null) {if(busy)return;if(!selected)setListScroll(window.scrollY);window.history.pushState({},'',id?`${BASE}/suppliers/${id}`:BASE);setSelected(id);setEvidence(null);setError('');setForm(null);if(id)window.scrollTo(0,0);}
-  async function mutate(path: string, body: Record<string,unknown>={}, message='Saved to this local prototype.') {
+  async function mutate(path: string, body: Record<string,unknown>={}, message='Saved to this demo workspace.') {
     if(!current||busy)return;setBusy(true);setFormError('');setError('');
     try {const c=await api<SupplierCase>(path,{expectedVersion:current.version,...body});setCurrent(c);setForm(null);setToast(message);try{await loadRollout();}catch{setError('The case was saved, but the rollout summary could not refresh. Refresh the record to update the summary.');}}
     catch(e){const text=(e as Error).message;if(form)setFormError(text);else setError(text);}
@@ -120,8 +130,8 @@ function App() {
     <div className="workspace"><header className="topbar"><div className="top-context"><Icon name="grid"/><span>Supplier collaboration</span><span className="top-divider"/><small>Nordtal Motion GmbH</small></div><div className="top-actions"><Badge tone="info">Portfolio demo</Badge><button onClick={()=>setDrawer('demo')} aria-label="Open demonstration controls"><Icon name="settings"/><span>Demo controls</span></button><div className="avatar small">MR</div></div></header>
     <main id="main-content"><div className="breadcrumb"><button onClick={()=>navigate(null)}>Supplier Management</button><Icon name="chevron" size={12}/><button onClick={()=>navigate(null)}>Supplier rollouts</button>{selected&&<><Icon name="chevron" size={12}/><span>{current?.supplier.name||'Supplier record'}</span></>}</div>
       {error&&<Alert severity="error" className="page-alert" action={<Button color="inherit" size="small" onClick={()=>selected?refreshCase():loadRollout().then(()=>setError('')).catch(e=>setError(e.message))}>Refresh</Button>}>{error}</Alert>}
-      {loading?<div className="loading"><CircularProgress size={25}/><p>Loading the local rollout…</p></div>:!selected?<>
-      <div className="page-heading"><div><div className="eyebrow">SUPPLIER ONBOARDING / WAVE 01</div><h1>November supplier rollout</h1><p>Nordtal Motion GmbH <span>·</span> Leipzig production plant <span>·</span> Target {date(rollout?.target||'2026-11-16')}</p></div><div className="heading-stamp"><span className="status-dot"/>Persistent local workspace<small>Scenario starts 6 Nov 2026</small></div></div>
+      {loading?<div className="loading"><CircularProgress size={25}/><p>Loading the demo rollout…</p></div>:!selected?<>
+      <div className="page-heading"><div><div className="eyebrow">SUPPLIER ONBOARDING / WAVE 01</div><h1>November supplier rollout</h1><p>Nordtal Motion GmbH <span>·</span> Leipzig production plant <span>·</span> Target {date(rollout?.target||'2026-11-16')}</p></div><div className="heading-stamp"><span className="status-dot"/>Persistent demo workspace<small>Your browser’s synthetic scenario</small></div></div>
       <div className="stats"><Stat value={cases.length} label="Suppliers in this wave" caption="One buyer · one plant" icon="users"/><Stat value={cases.filter(c=>c.caseType!=='reference'&&c.assessment.category!=='Contact blocker resolved').length} label="Cases needing attention" caption="Four modeled exception cases" icon="alert" tone="warning"/><Stat value={cases.filter(c=>c.registered).length} label="Registration observed" caption="An event, not transaction readiness" icon="check"/><Stat value={cases.filter(c=>c.testPassed).length} label="First tests completed" caption="Production approval remains separate" icon="chart"/></div>
       <div className="section-toolbar"><div><h2>Supplier participation</h2><p>Open a supplier record to inspect evidence and resolve its next action.</p></div><Badge>{cases.length} supplier relationships</Badge></div>
       <div className="table-card"><div className="filters"><TextField label="Search suppliers" placeholder="Name, number, or site" value={filters.q||''} onChange={e=>setFilters({...filters,q:e.target.value})} className="search-field" slotProps={{input:{startAdornment:<span className="search-icon"><Icon name="search" size={17}/></span>}}}/><TextField select label="Blocker" value={filters.blocker||''} onChange={e=>setFilters({...filters,blocker:e.target.value})}><MenuItem value="">All blockers</MenuItem>{[...new Set(cases.map(c=>c.assessment.category))].map(v=><MenuItem key={v} value={v}>{v}</MenuItem>)}</TextField><TextField select label="Milestone" value={filters.stage||''} onChange={e=>setFilters({...filters,stage:e.target.value})}><MenuItem value="">All milestones</MenuItem>{[...new Set(cases.map(c=>c.milestone))].map(v=><MenuItem key={v} value={v}>{v}</MenuItem>)}</TextField><TextField select label="Owner" value={filters.owner||''} onChange={e=>setFilters({...filters,owner:e.target.value})}><MenuItem value="">All owners</MenuItem>{[...new Set(cases.map(c=>c.owner))].map(v=><MenuItem key={v} value={v}>{v}</MenuItem>)}</TextField>{Object.values(filters).some(Boolean)&&<button className="text-button" onClick={()=>setFilters({})}>Clear</button>}</div>

@@ -4,7 +4,15 @@ A working supplier onboarding feature that turns conflicting contact records and
 
 Built by **Mann D. Shah** through AI-assisted development, covering product definition, process design, domain rules, and acceptance testing.
 
-**Independent portfolio concept · Synthetic data · Local operation · MIT license**
+**Independent portfolio concept · Synthetic data · Hosted demo and local operation · MIT license**
+
+[Open the live demo](https://supplier-onboarding-resolution.vercel.app)
+
+The frontend runs on Vercel and forwards `/api/*` to a Cloudflare Python Worker. A SQLite-backed Durable Object stores each browser's synthetic workspace separately. Reloading retains that browser's changes; Demo reset restores only its own scenario. The anonymous browser identifier is not authentication. Use fictional data only.
+
+To deploy backend changes with an authenticated Cloudflare CLI, run `uv run pywrangler deploy`. `pyproject.toml` and the lockfiles manage Worker dependencies; `requirements-local.txt` retains the local Uvicorn setup. The build stages only backend source into ignored `.wrangler/backend/`. Vercel deploys frontend changes from `main`, using the proxy and deep-link rewrites in `vercel.json`.
+
+To verify a deployed demo, install `requirements-dev.txt` and run `python tests/hosted_smoke.py https://supplier-onboarding-resolution.vercel.app`. This uses isolated synthetic sessions and checks accepted/rejected processing, stale reviews, validation, persistence, and visitor isolation.
 
 ![Supplier record with embedded resolution assistance, colored tabs, source contacts, and evidence-linked next actions](docs/assets/supplier-record.png)
 
@@ -50,7 +58,7 @@ Use **Python 3.13** and **Node.js 24** for the verified environment. Start in yo
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-local.txt
 npm.cmd ci
 npm.cmd run build
 .\.venv\Scripts\python.exe -m app
@@ -60,7 +68,7 @@ npm.cmd run build
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements-local.txt
 npm ci
 npm run build
 .venv/bin/python -m app

@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Literal
 from datetime import date
 import os
+import sys
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -55,9 +56,9 @@ class ResetBody(Body):
     variant: Literal["accepted", "rejected"]
 
 
-def create_app(db_path=None, static_dir=None):
+def create_app(db_path=None, static_dir=None, *, store=None, serve_frontend=True):
     app = FastAPI(title="Onboarding resolution · independent local prototype", docs_url="/api/docs")
-    store = Store(db_path or os.getenv("ONBOARDING_DB", str(ROOT / "data" / "prototype.sqlite3")))
+    store = store if store is not None else Store(db_path or os.getenv("ONBOARDING_DB", str(ROOT / "data" / "prototype.sqlite3")))
     app.state.store = store
 
     @app.exception_handler(RuleError)
@@ -65,20 +66,20 @@ def create_app(db_path=None, static_dir=None):
         return JSONResponse(status_code=exc.status, content={"detail": exc.message})
 
     @app.get("/api/health")
-    def health():
-        return {"status": "ok", "environment": "local synthetic prototype", "liveIntegrations": False}
+    async def health():
+        return {"status": "ok", "environment": "hosted synthetic prototype" if not serve_frontend else "local synthetic prototype", "liveIntegrations": False}
 
     @app.get("/api/rollouts/{rid}")
-    def rollout(rid: str):
+    async def rollout(rid: str):
         require(rid == ROLLOUT_ID, "Rollout not found.", 404)
         return store.rollout()
 
     @app.get("/api/cases/{cid}")
-    def case(cid: str):
+    async def case(cid: str):
         return store.get(cid)
 
     @app.post("/api/cases/{cid}/tasks")
-    def task(cid: str, body: TaskBody):
+    async def task(cid: str, body: TaskBody):
         def change(c, db):
             assessment = RuleBasedSummary().summarize(c)
             require(body.type == assessment["taskType"], "This task does not address the observed blocker.")
@@ -93,7 +94,7 @@ def create_app(db_path=None, static_dir=None):
         return store.mutate(cid, body.expectedVersion, "Maya Roth", "Task created", change)
 
     @app.post("/api/cases/{cid}/verifications")
-    def verify(cid: str, body: VerificationBody):
+    async def verify(cid: str, body: VerificationBody):
         def change(c, db):
             require(c["caseType"] == "contact" and c["candidate"], "No candidate contact is awaiting verification.")
             require(not any(r["status"] in ("accepted", "rejected") for r in c["requests"]),
@@ -121,7 +122,7 @@ def create_app(db_path=None, static_dir=None):
         return store.mutate(cid, body.expectedVersion, "Lena Hoffmann (recorded)", "Verification recorded", change)
 
     @app.post("/api/cases/{cid}/change-requests")
-    def propose(cid: str, body: ProposalBody):
+    async def propose(cid: str, body: ProposalBody):
         def change(c, db):
             v = latest_verification(c)
             require(c["caseType"] == "contact" and v and v["outcome"] == "confirmed", "Confirmed scoped verification is required.")
@@ -145,7 +146,7 @@ def create_app(db_path=None, static_dir=None):
         raise RuleError("Correction request not found.", 404)
 
     @app.post("/api/change-requests/{rid}/approve")
-    def approve(rid: str, body: ReviewBody):
+    async def approve(rid: str, body: ReviewBody):
         cid = find_request(rid)
         def change(c, db):
             req = next(r for r in c["requests"] if r["id"] == rid)
@@ -160,7 +161,7 @@ def create_app(db_path=None, static_dir=None):
         return store.mutate(cid, body.expectedVersion, "Maya Roth", "Review approved", change)
 
     @app.post("/api/change-requests/{rid}/process-demo")
-    def process(rid: str, body: Mutation):
+    async def process(rid: str, body: Mutation):
         cid = find_request(rid)
         def already(c):
             return next(r for r in c["requests"] if r["id"] == rid)["status"] in ("accepted", "rejected")
@@ -179,7 +180,7 @@ def create_app(db_path=None, static_dir=None):
         return store.mutate(cid, body.expectedVersion, "Synthetic registry adapter", "Update processed", change, idempotent=already)
 
     @app.post("/api/demo/cases/{cid}/events")
-    def demo_event(cid: str, body: DemoEventBody):
+    async def demo_event(cid: str, body: DemoEventBody):
         def change(c, db):
             require(c["caseType"] == "contact", "No milestone simulation is modeled for this case.")
             req = c["requests"][-1] if c["requests"] else None
@@ -208,14 +209,17 @@ def create_app(db_path=None, static_dir=None):
         return store.mutate(cid, body.expectedVersion, "Demonstration controls", "Synthetic event added", change)
 
     @app.post("/api/demo/reset")
-    def reset(body: ResetBody):
+    async def reset(body: ResetBody):
         store.reset(body.variant)
         return store.rollout()
 
     # Never return the SPA document for a missing API route or missing asset.
     @app.api_route("/api/{unmatched:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
-    def unknown_api(unmatched: str):
+    async def unknown_api(unmatched: str):
         raise RuleError("API route not found.", 404)
+
+    if not serve_frontend:
+        return app
 
     dist = Path(static_dir) if static_dir else ROOT / "dist"
     if (dist / "assets").is_dir():
@@ -233,4 +237,5 @@ def create_app(db_path=None, static_dir=None):
     return app
 
 
-app = create_app()
+# Workers receive a Durable Object store instead of opening a local database.
+app = create_app() if sys.platform != "emscripten" else None

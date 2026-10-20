@@ -1,6 +1,10 @@
 node_modules/
 dist/
 .venv/
+.venv-workers/
+python_modules/
+.wrangler/
+.vercel/
 __pycache__/
 .pytest_cache/
 data/

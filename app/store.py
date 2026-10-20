@@ -3,7 +3,6 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-import sqlite3
 
 from .domain import RuleError, RuleBasedSummary, milestone
 from .fixtures import ROLLOUT_ID, DEMO_TIME, scope, seed_cases
@@ -27,6 +26,8 @@ class Store:
 
     @contextmanager
     def connection(self):
+        import sqlite3
+
         db = sqlite3.connect(self.path, timeout=10)
         db.row_factory = sqlite3.Row
         try:
