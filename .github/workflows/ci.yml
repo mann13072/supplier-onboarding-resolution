@@ -1,0 +1,48 @@
+name: Build and acceptance checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: '1'
+      ONBOARDING_DB: ${{ runner.temp }}/onboarding-import.sqlite3
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Install JavaScript dependencies
+        run: npm ci
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Build and type-check frontend
+        run: npm run build
+      - name: Run backend acceptance tests
+        run: python -m pytest -q tests/test_workflow.py
+      - name: Install test browser
+        run: python -m playwright install --with-deps chromium
+      - name: Run browser acceptance walkthrough
+        run: python tests/browser_smoke.py

@@ -1,0 +1,31 @@
+{
+  "name": "supplier-onboarding-resolution",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A local supplier onboarding resolution prototype with evidence, scoped verification, review gates, and simulated integration outcomes.",
+  "author": "Mann D. Shah",
+  "license": "MIT",
+  "engines": { "node": ">=22.12.0" },
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "dev": "vite --host 127.0.0.1",
+    "test:backend": "python -m pytest -q tests/test_workflow.py",
+    "test:browser": "python tests/browser_smoke.py",
+    "start": "python -m app"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^7.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "6.0.3",
+    "vite": "8.3.4"
+  }
+}
