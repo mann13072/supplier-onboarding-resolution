@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 15
     env:
       PYTHONUTF8: '1'
-      ONBOARDING_DB: ${{ runner.temp }}/onboarding-import.sqlite3
+      ONBOARDING_DB: ${{ github.workspace }}/.test-tmp-ci/onboarding-import.sqlite3
     steps:
       - name: Check out source
         uses: actions/checkout@v7

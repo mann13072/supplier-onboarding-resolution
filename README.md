@@ -140,7 +140,7 @@ On macOS/Linux, use `.venv/bin/python` and `npm` in the same sequence. Linux may
 
 The browser script starts its own temporary server and isolated database, then closes its server and browser even if a check fails. It does not modify the normal application database. Inspection images go to ignored `test-results/`.
 
-**Verified locally:** production build, 17 backend tests, and the browser walkthrough passed. Desktop/mobile screenshots were inspected. The walkthrough reported no JavaScript errors or external browser requests. Windows was the local verification platform; the included Ubuntu GitHub Actions job will receive its first hosted result after publication.
+**Verified locally:** production build, 17 backend tests, and the browser walkthrough passed. Desktop/mobile screenshots were inspected. The walkthrough reported no JavaScript errors or external browser requests. Windows was the local verification platform; see [GitHub Actions](https://github.com/mann13072/supplier-onboarding-resolution/actions) for the latest hosted Ubuntu result.
 
 [GitHub Actions](.github/workflows/ci.yml) installs dependencies, builds the frontend, runs backend tests, and runs the browser walkthrough on pushes and pull requests. It does not publish or deploy the application.
 
